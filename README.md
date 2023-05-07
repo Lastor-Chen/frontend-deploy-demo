@@ -74,3 +74,51 @@ dist 採用 -f push 覆蓋, 畢竟是編譯後的檔案, 其實不需要 git 版
 2. 讓 Server 端人員去跑 build & deploy
   - 缺點:
     - 恐會搞的很麻煩
+
+## Actions
+
+- 以 vite github pages 部署模板作為 base
+- Actions 會自動生成 `${{ secrets.GITHUB_TOKEN }}` 臨時權杖，用來對 repo 做基本的 git 操作
+- GITHUB_TOKEN 的權限由 `permissions.contents` 控制，要改成 write 才能 git push，repo 的 `Setting.Actions.General` 下面的 `Workflow permissions` 也可設定，會以 yml 的為優先
+  - [參考](https://stackoverflow.com/questions/73687176/permission-denied-to-github-actionsbot-the-requested-url-returned-error-403)
+  ```yml
+  permissions:
+    contents: write
+  ```
+- 也可生成 PAT，勾選 `repo:status` 與 `public_repo`。然後在目標 repo 的 `Setting.Secrets.Actions` 建立新的 secret 將 PAT 貼上，並取個名子，之後可在 Actions 呼叫。例如取名為 PAT 則為 `${{ secrets.PAT }}`
+- 簡單的 change file, commit, push 範例: [Link](https://stackoverflow.com/questions/57921401/push-to-origin-from-github-action)
+- 在一個 steps 有切資料夾的話，下一個 steps 會回到根目錄
+- 如果手動 clone 其他 branch 或 repo 到特定資料夾，該 git 無法吃到同個 `actions/checkout` 控制的 GITHUB_TOKEN，手動 push 要另外帶 PAT 或採用 [action/github-push](https://github.com/marketplace/actions/github-push)
+  ```yml
+  git push https://${{ secrets.PAT }}@github.com/${{ github.repository }}.git dist
+  ```
+- 手動 clone dist 的話, token 要另外帶
+  ```yml
+  steps:
+    - name: Clone dist branch
+        run: |
+          git clone https://github.com/${{ github.repository }}.git -b dist --single-branch ./dist
+    - name: Change
+        run: |
+          # something change...
+    - name: Commit
+        run: |
+          cd dist
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "v01.$(date +%Y%m%d)"
+          # 手動帶 token push
+          # git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+    # 透過其他 action 帶 token push
+    - name: Push changes
+       uses: ad-m/github-push-action@master
+       with:
+         github_token: ${{ secrets.GITHUB_TOKEN }}
+         directory: './dist'
+         branch: dist
+  ```
+- 使用 `actions/setup-node` 時，如要用 pnpm 需要事先安裝: [參考](https://github.com/actions/setup-node/blob/main/docs/advanced-usage.md#caching-packages-data)
+- [Actions Context](https://docs.github.com/en/actions/learn-github-actions/contexts)
+- [GITHUB_TOKEN](https://docs.github.com/en/actions/security-guides/automatic-token-authentication)
+- checkout 多 repo，指定 dir - [參考](https://www.youtube.com/watch?v=dcSy8uCxOfk)
