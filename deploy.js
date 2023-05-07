@@ -2,8 +2,8 @@
 // https://www.npmjs.com/package/prompts
 // https://www.npmjs.com/package/execa
 
-import { execSync } from 'child_process'
-import readline from 'readline'
+import { execSync } from 'node:child_process'
+import readline from 'node:readline'
 
 function exec(commands) {
   execSync(commands, { stdio: 'inherit', shell: true })
@@ -14,9 +14,18 @@ const rl = readline.createInterface({
   output: process.stdout
 })
 
-rl.question('Input version tag: ', (version) => {
-  console.log(`Deploy dist branch to Github with version ${version}`)
-  exec('rm -rf ./dist/.git')
-  exec(`sh deploy.sh ${version}`)
-  rl.close()
-})
+function ask() {
+  rl.question('Where to push (target branch name)? ', (branchName) => {
+    if (!branchName) {
+      console.log('Please input target branch name.')
+      ask()
+      return
+    }
+  
+    console.log(`Push dist folder to branch ${branchName}.\n`)
+    exec(`sh deploy.sh ${branchName}`)
+    rl.close()
+  })
+}
+
+ask()

@@ -3,28 +3,19 @@
 # abort on errors
 set -e
 
-# build
-# npm run build
+# # get remote url
+REMOTE=$(git remote get-url origin)
 
-# navigate into the build output directory
+# # navigate into the build output directory
 cd dist
 
-# place .nojekyll to bypass Jekyll processing
-# echo > .nojekyll
+# Get git status
+status=$(git status --porcelain)
 
-# if you are deploying to a custom domain
-# echo 'www.example.com' > CNAME
+# Check if there are any changes
+if [ -n "$status" ]; then
+  git add -A
+  git commit -m "v01.$(date +%Y%m%d)" --no-verify
+fi
 
-git init
-git checkout -B main
-git add -A
-git commit -m $1 --no-verify
-
-# if you are deploying to https://<USERNAME>.github.io
-# git push -f git@github.com:<USERNAME>/<USERNAME>.github.io.git main
-
-
-# if you are deploying to https://<USERNAME>.github.io/<REPO>
-git push -f git@github.com:Lastor-Chen/frontend-deploy-demo.git main:dist
-
-cd -
+git push ${REMOTE} dist:$1

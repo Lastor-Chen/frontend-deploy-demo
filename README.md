@@ -1,81 +1,50 @@
 # Frontend Deploy Demo
 
-核心訴求:
+比照 vue-cli 官方介紹的 gh-pages 部署概念，使用 GitHub Actions 或 sh file 將 dist 資料夾作為 root 並 push 為新的 branch。
 
-讓 git 忽略 dist 輸出資料夾, 並只 deploy dist 內容到 Server。畢竟 Server 不需要 source files, 不該放在上面佔空間。
+## 使用 sh file 自動化
 
-## 開發端操作
+先將既存的 `dist branch` clone 到 `./dist` 目錄下。
+```bash
+$ git clone ${repo_url} -b dist --single-branch ./dist
+```
 
-到 release 的流程都跟之前一樣
-1. 正常在 `development branch` 開發
-1. 完成後, 發 PR, merge to `main branch`
-1. 一樣在 `main branch` 上 tag & release
-
-接著在本機打包
-
+Build。
 ```bash
 $ pnpm build
 ```
 
-然後執行自訂的 deploy 指令 (跟 pnpm deploy 撞名, 改用 release)
-
+執行自動化指令 (pnpm deploy 名稱已被占用, 故改用 release)。
 ```bash
 $ pnpm release
 ```
 
-接著會詢問版本號, 會作為 commit message, 之後全自動將 dist 資料夾作為 `dist branch` push 到 GitHub 上
+依提示訊息，輸入要 push 的目標 branch name。
 
+## 上傳檔案到 Server 端
+
+Server 端容器 clone 並 pull `branch dist` 即可。
+
+<br />
+
+初次上傳。
 ```bash
-# 輸入版本號 v01.{date}.{times}
-Input version tag: v01.20221122.00
+$ cd path/to/project/root
+$ git clone -b dist --single-branch ${repo_url} .
 ```
 
-## Server 端操作
-
-Server 只拉 build 後的檔案，也就是 `dist branch`, 並不需要 source files。
-- `-b` 只拉特定 branch
-- `--single-branch` 不拉其他 branch 的歷史紀錄, 未來 fetch 時也只會同步指定的單一 branch
-
+後續只要 pull 新的內容即可。
 ```bash
-$ cd httpd/web_target_path
-$ git clone -b dist --single-branch {repo_path} .
+$ git fetch
+$ git pull
 ```
 
-可以利用 commit message 快速確認當前 Server 的版本
+## 使用 GitHub Actions 自動化
 
-```bash
-$ git log
-```
+main branch 在 onPush 時，會自動透過 GitHub Actions 進行 build 以及 push dist dir to dist branch 的動作。<br />
+可參照 actions 設定檔 `.github/workflows/deploy-dist.yml`。
 
-要更新版本時, 讓開發者先 build 之後, 依照上面的方式 deploy `dist branch`, Server 端直接 reset 更新
-
-```bash
-$ git reset --hard origin/dist
-```
-
-## Memo
-
-### 標準 github pages 作法
-
-[Vite Deploy a static site - Github Pages](https://vitejs.dev/guide/static-deploy.html#github-pages)
-
-dist 採用 -f push 覆蓋, 畢竟是編譯後的檔案, 其實不需要 git 版控
-
-缺點:
-- 如發生問題需退版本時, 得在本地端切換 main 跑一遍 build & deploy, 無法由 Server 端靈活切換
-
-### 可能的解法
-
-1. 不使用 -f push, 讓 dist branch 紀錄 commit
-  - 缺點:
-    - 需要多管理一支 branch, 多人協作恐會紊亂
-    - 主要的版控其實是忽略 dist 的, 如果 `dist branch` 也要版控會有諸多麻煩
-    - 同上, 新人環境建置時, 會搞這個 `dist branch` 搞很久
-2. 讓 Server 端人員去跑 build & deploy
-  - 缺點:
-    - 恐會搞的很麻煩
-
-## Actions
+### memo
 
 - 以 vite github pages 部署模板作為 base
 - Actions 會自動生成 `${{ secrets.GITHUB_TOKEN }}` 臨時權杖，用來對 repo 做基本的 git 操作
