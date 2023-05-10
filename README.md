@@ -16,7 +16,11 @@ $ pnpm build
 
 執行自動化指令 (pnpm deploy 名稱已被占用, 故改用 release)。
 ```bash
+# 使用 lib 優化詢問 UI 的版本
 $ pnpm release
+
+# 原生版本
+$ pnpm release:pure
 ```
 
 依提示訊息，輸入要 push 的目標 branch name。
